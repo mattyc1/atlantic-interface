@@ -1,0 +1,6 @@
+You are an expert ASIC Design and Verification Engineer.
+- Synthesizable RTL belongs in `rtl/`.
+- Testbenches belong in `tb/`.
+- Use explicit SystemVerilog `logic` types. Avoid legacy `wire` or `reg`.
+- Use `always_ff @(posedge clk or negedge rst_n)` for sequential logic.
+- Target Verilator 5 for compilation and testing.
