@@ -19,9 +19,12 @@ module fifo (
 
     output logic [DATA_WIDTH-1:0] read_data,
     output logic empty,
-    output logic full
+    output logic full,
+    output logic sop_out,
+    output logic eop_out
+
 );
-    logic [DATA_WIDTH - 1:0] memory [0:DEPTH - 1]; // 31:0 bits allocated for 15 indices 0 - 15
+    fifo_entry_t memory [0:DEPTH - 1]; // 31:0 bits allocated for 15 indices 0 - 15
     logic [$clog2(DEPTH)-1:0] write_pointer;
     logic [$clog2(DEPTH)-1:0] read_pointer;
     logic [$clog2(DEPTH):0] counter;
@@ -32,8 +35,9 @@ module fifo (
             read_pointer <= 0;
             counter <= 0;
         end
-        else if (write_en && !full) begin
-            memory[write_pointer] <= write_data;
+
+        if (write_en && !full) begin
+            memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
             
             if (write_pointer == DEPTH - 1) begin
                 write_pointer <= 0;
@@ -43,8 +47,11 @@ module fifo (
             end
             counter <= counter + 1;
         end
-        else if (read_en && !empty) begin
-            read_data <= memory[read_pointer];
+        
+        if (read_en && !empty) begin
+            read_data <= memory[read_pointer].data;
+            sop_out <= memory[read_pointer].sop;
+            eop_out <= memory[read_pointer].eop;
 
             if (read_pointer == DEPTH - 1) begin
                 read_pointer <= 0;
