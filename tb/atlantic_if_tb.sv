@@ -1,6 +1,7 @@
 localparam DATA_WIDTH = 32; // 32 bits per packet
 localparam DEPTH = 16; // 16 packets
 
+// compresses logic into one contiguous vector
 typedef struct packed {
     logic [DATA_WIDTH-1:0] data;
     logic                  sop;
@@ -35,31 +36,68 @@ module fifo (
             read_pointer <= 0;
             counter <= 0;
         end
+        else begin
+            // write only
+            if (write_en && !full && !read_en) begin
+                // store data to memory
+                memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
+                
+                // update write pointer
+                if (write_pointer == DEPTH - 1) begin
+                    write_pointer <= 0;
+                end
+                else begin
+                    write_pointer <= write_pointer + 1;
+                end
 
-        if (write_en && !full) begin
-            memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
+                counter <= counter + 1;
+            end
             
-            if (write_pointer == DEPTH - 1) begin
-                write_pointer <= 0;
-            end
-            else begin
-                write_pointer <= write_pointer + 1;
-            end
-            counter <= counter + 1;
-        end
-        
-        if (read_en && !empty) begin
-            read_data <= memory[read_pointer].data;
-            sop_out <= memory[read_pointer].sop;
-            eop_out <= memory[read_pointer].eop;
+            // read only
+            if (read_en && !empty && !write_en) begin
+                // extract data from memory
+                read_data <= memory[read_pointer].data;
+                sop_out <= memory[read_pointer].sop;
+                eop_out <= memory[read_pointer].eop;
 
-            if (read_pointer == DEPTH - 1) begin
-                read_pointer <= 0;
+                // update read pointer
+                if (read_pointer == DEPTH - 1) begin
+                    read_pointer <= 0;
+                end
+                else begin
+                    read_pointer <= read_pointer + 1;
+                end
+
+                counter <= counter - 1;
             end
-            else begin
-                read_pointer <= read_pointer + 1;
+
+            // read and write on same clock cycle
+            if (read_en && !empty && write_en && !full) begin
+                // extract data from memory
+                read_data <= memory[read_pointer].data;
+                sop_out <= memory[read_pointer].sop;
+                eop_out <= memory[read_pointer].eop;
+
+                // update read pointer
+                if (read_pointer == DEPTH - 1) begin
+                    read_pointer <= 0;
+                end
+                else begin
+                    read_pointer <= read_pointer + 1;
+                end
+
+                // store data to memory
+                memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
+                
+                // update write pointer
+                if (write_pointer == DEPTH - 1) begin
+                    write_pointer <= 0;
+                end
+                else begin
+                    write_pointer <= write_pointer + 1;
+                end
             end
-            counter <= counter - 1;
+
         end
     end
 
