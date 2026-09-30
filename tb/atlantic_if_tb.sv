@@ -37,6 +37,71 @@ module fifo (
             counter <= 0;
         end
         else begin
+            // Both read and write active
+            if (write_en && read_en) begin
+                // read and write allowed
+                if (!full && !empty) begin
+                    // store data
+                    memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
+
+                    // update write pointer
+                    if (write_pointer >= DEPTH - 1) begin
+                        write_pointer <= 0;
+                    end
+                    else begin
+                       write_pointer <= write_pointer + 1; 
+                    end
+
+                    // extract data from memory
+                    read_data <= memory[read_pointer].data;
+                    sop_out <= memory[read_pointer].sop;
+                    eop_out <= memory[read_pointer].eop;
+
+                    // update read pointer
+                    if (read_pointer >= DEPTH - 1) begin
+                        read_pointer <= 0;
+                    end
+                    else begin
+                       read_pointer <= read_pointer + 1; 
+                    end
+
+                end
+
+                // not full and empty -> write only 
+                else if (!full && empty) begin
+
+                    // store data to memory
+                    memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
+                    
+                    // update write pointer
+                    if (write_pointer == DEPTH - 1) begin
+                        write_pointer <= 0;
+                    end
+                    else begin
+                        write_pointer <= write_pointer + 1;
+                    end
+
+                    counter <= counter + 1;
+                end
+
+                else begin
+                    // extract data from memory
+                    read_data <= memory[read_pointer].data;
+                    sop_out <= memory[read_pointer].sop;
+                    eop_out <= memory[read_pointer].eop;
+
+                    // update read pointer
+                    if (read_pointer == DEPTH - 1) begin
+                        read_pointer <= 0;
+                    end
+                    else begin
+                        read_pointer <= read_pointer + 1;
+                    end
+
+                    counter <= counter - 1;
+                end
+            end
+
             // write only
             if (write_en && !full && !read_en) begin
                 // store data to memory
@@ -70,34 +135,6 @@ module fifo (
 
                 counter <= counter - 1;
             end
-
-            // read and write on same clock cycle
-            if (read_en && !empty && write_en && !full) begin
-                // extract data from memory
-                read_data <= memory[read_pointer].data;
-                sop_out <= memory[read_pointer].sop;
-                eop_out <= memory[read_pointer].eop;
-
-                // update read pointer
-                if (read_pointer == DEPTH - 1) begin
-                    read_pointer <= 0;
-                end
-                else begin
-                    read_pointer <= read_pointer + 1;
-                end
-
-                // store data to memory
-                memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
-                
-                // update write pointer
-                if (write_pointer == DEPTH - 1) begin
-                    write_pointer <= 0;
-                end
-                else begin
-                    write_pointer <= write_pointer + 1;
-                end
-            end
-
         end
     end
 
