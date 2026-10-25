@@ -1,5 +1,8 @@
+`timescale 1ns / 1ps
+
 localparam DATA_WIDTH = 32; // 32 bits per packet
 localparam DEPTH = 16; // 16 packets
+localparam logic [$clog2(DEPTH)-1:0] MAX_PTR = ($clog2(DEPTH))'(DEPTH - 1);
 
 // compresses logic into one contiguous vector
 typedef struct packed {
@@ -25,7 +28,7 @@ module atlantic_if (
     output logic eop_out
 
 );
-    fifo_entry_t memory [0:DEPTH - 1]; // 31:0 bits allocated for 15 indices 0 - 15
+    fifo_entry_t memory [0:MAX_PTR]; // array of fifo_entry_t structs
     logic [$clog2(DEPTH)-1:0] write_pointer;
     logic [$clog2(DEPTH)-1:0] read_pointer;
     logic [$clog2(DEPTH):0] counter;
@@ -45,7 +48,7 @@ module atlantic_if (
                     memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
 
                     // update write pointer
-                    if (write_pointer >= DEPTH - 1) begin
+                    if (write_pointer >= MAX_PTR) begin
                         write_pointer <= 0;
                     end
                     else begin
@@ -58,7 +61,7 @@ module atlantic_if (
                     eop_out <= memory[read_pointer].eop;
 
                     // update read pointer
-                    if (read_pointer >= DEPTH - 1) begin
+                    if (read_pointer >= MAX_PTR) begin
                         read_pointer <= 0;
                     end
                     else begin
@@ -74,7 +77,7 @@ module atlantic_if (
                     memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
                     
                     // update write pointer
-                    if (write_pointer == DEPTH - 1) begin
+                    if (write_pointer == MAX_PTR) begin
                         write_pointer <= 0;
                     end
                     else begin
@@ -91,7 +94,7 @@ module atlantic_if (
                     eop_out <= memory[read_pointer].eop;
 
                     // update read pointer
-                    if (read_pointer == DEPTH - 1) begin
+                    if (read_pointer == MAX_PTR) begin
                         read_pointer <= 0;
                     end
                     else begin
@@ -108,7 +111,7 @@ module atlantic_if (
                 memory[write_pointer] <= '{data: write_data, sop: sop, eop: eop};
                 
                 // update write pointer
-                if (write_pointer == DEPTH - 1) begin
+                if (write_pointer == MAX_PTR) begin
                     write_pointer <= 0;
                 end
                 else begin
@@ -126,7 +129,7 @@ module atlantic_if (
                 eop_out <= memory[read_pointer].eop;
 
                 // update read pointer
-                if (read_pointer == DEPTH - 1) begin
+                if (read_pointer == MAX_PTR) begin
                     read_pointer <= 0;
                 end
                 else begin
