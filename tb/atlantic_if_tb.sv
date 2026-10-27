@@ -16,6 +16,8 @@ module atlantic_if_tb;
     logic sop_out;
     logic eop_out;
 
+    always #5 clk = ~clk;
+
     atlantic_if dut (
         .clk(clk),
         .reset(reset),
@@ -31,8 +33,38 @@ module atlantic_if_tb;
         .eop_out(eop_out)
     );
 
-    always #5 clk = ~clk;
 
+    task check_read_cycle(
+        logic [31:0] expected_data,
+        logic expected_sop,
+        logic expected_eop,
+        logic expected_empty
+    );
+        if (expected_data !== read_data) begin
+            $error("FAIL: EXPECTED: %h | RECEIVED: %h", expected_data, read_data);
+        end else begin
+            $display("PASS: READ DATA MATCHES");
+        end
+        
+        if (expected_sop !== sop_out) begin
+            $error("FAIL: EXPECTED: %b | RECEIVED: %b", expected_sop, sop_out);
+        end else begin
+            $display("PASS: SOP DATA MATCHES");
+        end
+
+        if (expected_eop !== eop_out) begin
+            $error("FAIL: EXPECTED: %b | RECEIVED: %b", expected_eop, eop_out);
+        end else begin
+            $display("PASS: EOP DATA MATCHES");
+        end
+
+        if (expected_empty !== empty) begin
+            $error("FAIL: EXPECTED: %b | RECEIVED: %b", expected_empty, empty);
+        end else begin
+            $display("PASS: EMPTY DATA MATCHES");
+        end
+
+    endtask
 
     initial begin
         $dumpfile("sim/atlantic_if_tb.vcd");
@@ -42,18 +74,31 @@ module atlantic_if_tb;
         reset = 1;
         read_en = 0;
         write_en = 0;
-        write_data = 0;
-        
+        write_data = '0;
+        sop = 0;
+        eop = 0;
+    
+        #10;
+        reset = 0;
 
-        #10 reset = 0;
+        // write 1 packet, read 1 packet back
+        @(posedge clk);
+        write_en = 1;
+        write_data = 32'hA0B0C0D0;
+        sop = 1;
+        eop = 1;
 
         @(posedge clk);
-        sop = 1;
-        eop = 0;
-        write_data = 32'h12345678;
-        write_en = 1;
+        write_en = 0;
+        read_en = 1;
 
+        @(posedge clk)
+        read_en = 0;
 
+        #1;
+        check_read_cycle(32'hA0B0C0D0, 1, 1, 1);
+
+        #20
 
         $finish;
     end
